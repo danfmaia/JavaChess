@@ -20,6 +20,10 @@ public class PiecesDragAndDropListener implements MouseListener, MouseMotionList
 	
 	@Override
 	public void mousePressed( MouseEvent evt ){
+		if( ! chessGui.isDraggingGamePiecesEnabled() ){
+			return;
+		}
+		
 		int x = evt.getPoint().x;
 		int y = evt.getPoint().y;
 		

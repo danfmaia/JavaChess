@@ -20,7 +20,7 @@ public class ChessConsole implements IPlayerHandler {
 		// Create a new chess game.
 		this.chessGame = chessGame;
 		
-		this.printCurrentGameState();
+		ChessConsole.printCurrentGameState( chessGame );
 	}
 	
 	@Override
@@ -56,7 +56,7 @@ public class ChessConsole implements IPlayerHandler {
 	
 	@Override
 	public void moveSuccessfullyExecuted( Move move ){
-		this.printCurrentGameState();
+		ChessConsole.printCurrentGameState( chessGame );
 		
 		if( chessGame.getGameState() == GameState.END ){
 			if( chessGame.getLastGameState() == GameState.WHITE ){
@@ -73,30 +73,8 @@ public class ChessConsole implements IPlayerHandler {
 	 * "exit", the application ends. Otherwise the user input is interpreted as
 	 * a move and the application tries to execute that move.
 	 */
-/*	public void run() {		
-		// Prepares for reading input
-		String input = "";
-		BufferedReader inputReader = new BufferedReader( new InputStreamReader(System.in) );
-		
-		while( true ) {
-			// Prints game state and ask for user input
-			this.printCurrentGameState();
-			System.out.println("your move (e.g. e2-e4): ");
-			try {
-				// Reads user input.
-				input = inputReader.readLine();
-				
-				// Exits if user types 'exit'.
-				if( input.equalsIgnoreCase("exit") ){
-					return;
-				}else{
-					this.convertStringToMove( input );
-				}
-			} catch( Exception e ){
-				System.out.println( e.getClass() + ": " + e.getMessage() );
-			}
-		}
-	}*/
+
+	
 	
 	/**
 	 * Moves piece to the specified location.
@@ -179,14 +157,14 @@ public class ChessConsole implements IPlayerHandler {
 	/**
 	 * Prints current game board and game state info.
 	 */
-	private void printCurrentGameState() {
+	private static void printCurrentGameState( ChessGame chessGame ) {
 		System.out.println("  a  b  c  d  e  f  g  h  ");
 		for( int row = Piece.ROW_8; row >= Piece.ROW_1; row-- ){
 			System.out.println(" +--+--+--+--+--+--+--+--+");
 			String strRow = (row + 1) + "|";
 			for( int col = Piece.COL_A; col <= Piece.COL_H; col++ ){
-				Piece piece = this.chessGame.getNonCapturedPieceAtLocation( row, col );
-				String pieceStr = getNameOfPiece( piece );
+				Piece piece = ChessGame.getNonCapturedPieceAtLocation( chessGame.getPieces(), row, col );
+				String pieceStr = ChessConsole.getNameOfPiece( piece );
 				strRow += pieceStr + "|";
 			}
 			System.out.println( strRow + (row + 1) );
@@ -220,7 +198,7 @@ public class ChessConsole implements IPlayerHandler {
 	 * @return String representation of the piece or a two letter empty string
 	 * 		   if the specified piece is null.
 	 */
-	private String getNameOfPiece( Piece piece ){
+	private static String getNameOfPiece( Piece piece ){
 		if( piece == null ){
 			return "  ";
 		}

@@ -21,8 +21,12 @@ public class MoveValidator {
 		targetRow = move.targetRow;
 		targetCol = move.targetCol;
 		
-		sourcePiece = chessGame.getNonCapturedPieceAtLocation( sourceRow, sourceCol );
-		targetPiece = chessGame.getNonCapturedPieceAtLocation( targetRow, targetCol );
+		sourcePiece = ChessGame.getNonCapturedPieceAtLocation( 
+			chessGame.getPieces(), sourceRow, sourceCol
+		);
+		targetPiece = ChessGame.getNonCapturedPieceAtLocation(
+			chessGame.getPieces(), targetRow, targetCol
+		);
 		
 		// If source piece does not exist, returns null.
 		if( this.sourcePiece == null ){

@@ -1,5 +1,7 @@
 package gui;
 
+import handler.IPlayerHandler;
+
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -22,7 +24,7 @@ import logic.Piece;
 import logic.Piece.Team;
 import logic.Piece.Type;
 
-public final class ChessGui extends JPanel {
+public final class ChessGui extends JPanel implements IPlayerHandler {
 	
 	private static final long serialVersionUID = 3114147670071466558L;
 	
@@ -50,12 +52,14 @@ public final class ChessGui extends JPanel {
 	private List<GuiPiece> guiPieces = new ArrayList<GuiPiece>();
 	
 	private GuiPiece dragPiece; // currently dragged game piece
+	private boolean draggingGamePiecesEnabled = false;
 	
 	private ChessGame chessGame;
 	
+	private Move currentMove;
 	private Move lastMove; // the last executed move (used for highlighting)
 
-	public ChessGui() {
+	public ChessGui( ChessGame chessGame ) {
 		this.setLayout( null );
 		
 		// Loads and sets background image
@@ -63,7 +67,7 @@ public final class ChessGui extends JPanel {
 		this.imgBackground = new ImageIcon( urlBackgroundImg ).getImage();
 		
 		// Creates chess game.
-		this.chessGame = new ChessGame();
+		this.chessGame = chessGame;
 		
 		// Wraps game pieces into their graphical representation
 		for( Piece piece : this.chessGame.getPieces() ){
@@ -90,14 +94,37 @@ public final class ChessGui extends JPanel {
         frame.setDefaultCloseOperation( JFrame.EXIT_ON_CLOSE );
         frame.add( this );
         frame.setSize( imgBackground.getWidth(null), imgBackground.getHeight(null) );
-        
-        // Button to change game state.
-        /*JButton btnChangeGameState = new JButton( "change" );
-        btnChangeGameState.addActionListener( new ChangeGameStateButtonActionListener(this) );
-        btnChangeGameState.setBounds( 0, 0, 80, 30 );
-        this.add( btnChangeGameState );*/
-        
-
+	}
+	
+	@Override
+	public Move getMove() {
+		this.draggingGamePiecesEnabled = true;
+		
+		Move moveForExecution = this.currentMove;
+		this.currentMove = null;
+		return moveForExecution;
+	}
+	
+	@Override
+	public void moveSuccessfullyExecuted( Move move ){
+		int targetRow = move.targetRow;
+		int targetCol = move.targetCol;
+		
+		// Adjust GUI piece
+		GuiPiece guiPiece = this.getGuiPieceAt( targetRow, targetCol );
+		if( guiPiece == null ){
+			throw new IllegalStateException("no GUI piece at " + targetRow+"/"+targetCol);
+		}
+		guiPiece.resetToUnderlyingPiecePosition();
+		
+		// Remember last move.
+		this.lastMove = move;
+		
+		// Disable dragging until asked by ChessGame for the next move.
+		this.draggingGamePiecesEnabled = false;
+		
+		// Repaint the new state
+		this.repaint();
 	}
 	
 	/**
@@ -108,6 +135,24 @@ public final class ChessGui extends JPanel {
 		Image image = this.getImageForPiece( piece.getTeam(), piece.getType() );
 		GuiPiece guiPiece = new GuiPiece( image, piece );
 		this.guiPieces.add( guiPiece );
+	}
+	
+	/**
+	 * Get non captured GUI piece at specified position.
+	 * @param row
+	 * @param col
+	 * @return The GUI piece at the specified position. Null if there is no
+	 * 		   piece.
+	 */
+	private GuiPiece getGuiPieceAt( int row, int col ){
+		for( GuiPiece guiPiece : this.guiPieces ){
+			if( guiPiece.getPiece().getRow() == row
+					&& guiPiece.getPiece().getCol() == col
+					&& guiPiece.getPiece().isCaptured() == false ){
+				return guiPiece;
+			}
+		}
+		return null;
 	}
 	
 	/**
@@ -213,11 +258,7 @@ public final class ChessGui extends JPanel {
 			this.lblGameState.setText( chessGame.getLastGameState() + "'S VICTORY!" );
 		}
 	}
-
-	public List<GuiPiece> getGuiPieces() {
-		return this.guiPieces;
-	}
-
+	
 	/**
 	 * @return textual description of current game state
 	 */
@@ -263,9 +304,8 @@ public final class ChessGui extends JPanel {
 	}
 	
 	/**
-	 * Changes location of given piece, if the location is valid.
-	 * If the location is not valid, move the piece back to its original
-	 * position.
+	 * Sets current move for the getMove() method if the location is valid. If
+	 * the location is not valid, move the piece back to its original position.
 	 * @param dragPiece
 	 * @param x
 	 * @param y
@@ -276,7 +316,15 @@ public final class ChessGui extends JPanel {
 		int targetRow = ChessGui.convertYToRow( y );
 		int targetCol = ChessGui.convertXToCol( x );
 		
-		Move move = null;
+		Move move = new Move( sourceRow, sourceCol, targetRow, targetCol );
+		
+		if( chessGame.getMoveValidator().isMoveValid( move ) ){
+			this.currentMove = move;
+		} else {
+			dragPiece.resetToUnderlyingPiecePosition();
+		}
+		
+/*		Move move = null;
 		boolean wasMoveSuccessful = false;
 		
 		if( targetRow < Piece.ROW_1
@@ -298,31 +346,49 @@ public final class ChessGui extends JPanel {
 			}
 			
 			dragPiece.resetToUnderlyingPiecePosition();
-		}
-	}
-	
-	private boolean isUserDraggingPiece() {
-		return this.dragPiece != null;
+		}*/
 	}
 	
 	//
 	// ::: GETTERS & SETTERS :::
 	//
+	public List<GuiPiece> getGuiPieces() {
+		return this.guiPieces;
+	}
 	public GuiPiece getDragPiece() {
 		return dragPiece;
 	}
 	public void setDragPiece(GuiPiece dragPiece) {
 		this.dragPiece = dragPiece;
-	}	
+	}
+	public boolean isDraggingGamePiecesEnabled() {
+		return draggingGamePiecesEnabled;
+	}
 	public ChessGame getChessGame() {
 		return chessGame;
 	}
 
+	private boolean isUserDraggingPiece() {
+		return this.dragPiece != null;
+	}
+	
 	//
 	// ::: MAIN :::
 	//
 	public static void main(String[] args) {
-		new ChessGui();
+		// Create the game.
+		ChessGame chessGame = new ChessGame();
+		
+		// Create the clients/players.
+		ChessGui chessGui = new ChessGui( chessGame );
+		// guiconsole.ChessConsole chessConsole = new guiconsole.ChessConsole( chessGame );
+		
+		// Attach the clients/players to the game.
+		chessGame.setPlayer( Team.WHITE, chessGui );
+		chessGame.setPlayer( Team.BLACK, chessGui );
+		
+		// Finally, start the game.
+		new Thread( chessGame ).start();
 	}
 
 }

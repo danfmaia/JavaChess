@@ -98,7 +98,7 @@ public class ChessGame implements Runnable {
 		System.out.println( "JavaChess: waiting for players..." );
 		while( this.blackPlayerHandler == null || this.whitePlayerHandler == null ){
 			// Players are still missing.
-			try{ Thread.sleep(1000); }catch( InterruptedException e ){}	
+			try{ Thread.sleep(100); }catch( InterruptedException e ){}	
 		}
 		
 		// Set start player.
@@ -119,7 +119,7 @@ public class ChessGame implements Runnable {
 		// Wait for a valid move.
 		do {
 			move = this.activePlayerHandler.getMove();
-			try{ Thread.sleep(1000); } catch( InterruptedException e ){}	
+			try{ Thread.sleep(100); } catch( InterruptedException e ){}	
 		} while( move == null || ! this.moveValidator.isMoveValid(move) );
 		
 		// Execute move.
@@ -173,12 +173,12 @@ public class ChessGame implements Runnable {
 			return false;
 		}
 		
-		Piece piece = getNonCapturedPieceAtLocation( sourceRow, sourceCol );
+		Piece piece = getNonCapturedPieceAtLocation( this.pieces, sourceRow, sourceCol );
 			
 		// Checks if the move is capturing an opponent piece.
 		Team opponentTeam = (piece.getTeam() == Team.BLACK ? Team.WHITE : Team.BLACK );
 		if( isNonCapturedPieceAtLocation(opponentTeam, targetRow, targetCol) ){
-			Piece opponentPiece = getNonCapturedPieceAtLocation( targetRow, targetCol );
+			Piece opponentPiece = getNonCapturedPieceAtLocation( this.pieces, targetRow, targetCol );
 			opponentPiece.setCaptured( true );
 			System.out.println( piece + " captured " + opponentPiece );
 		}
@@ -215,8 +215,8 @@ public class ChessGame implements Runnable {
 	 * @param col of Piece.COL_..
 	 * @return the first not captured piece at the specified location
 	 */
-	public Piece getNonCapturedPieceAtLocation( int row, int col ){
-		for( Piece piece : this.pieces ){
+	public static Piece getNonCapturedPieceAtLocation( List<Piece> pieces, int row, int col ){
+		for( Piece piece : pieces ){
 			if( piece.getRow() == row 
 					&& piece.getCol() == col
 					&& piece.isCaptured() == false ){
