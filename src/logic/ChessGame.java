@@ -1,12 +1,14 @@
 package logic;
 
+import handler.IPlayerHandler;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import logic.Piece.Team;
 import logic.Piece.Type;
 
-public class ChessGame {
+public class ChessGame implements Runnable {
 	
 	public static enum GameState {
 		WHITE,
@@ -25,10 +27,14 @@ public class ChessGame {
 	private List<Piece> pieces = new ArrayList<Piece>();
 	private MoveValidator moveValidator = new MoveValidator( this );
 	
+	private IPlayerHandler blackPlayerHandler;
+	private IPlayerHandler whitePlayerHandler;
+	private IPlayerHandler activePlayerHandler;
+	
 	/**
 	 * Initializes game.
 	 */
-	public ChessGame(){		
+	public ChessGame() {		
 		// :: CREATES AND PLACES PIECES ::
 		
 		// White rook, knight, bishop, queen, king, bishop, knight and rook
@@ -64,6 +70,75 @@ public class ChessGame {
 	    	createAndAddPiece( Team.BLACK, Type.PAWN, Piece.ROW_7, currentCol );
 	    	currentCol++;
 	    }	
+	}
+	
+	/**
+	 * Sets the player/client for the specified piece team.
+	 * @param team The team the client/player controls.
+	 * @param playerHandler The client/player.
+	 */
+	public void setPlayer( Team team, IPlayerHandler playerHandler ){
+		switch( team ){
+		case WHITE:
+			this.whitePlayerHandler = playerHandler;
+			break;
+		case BLACK:
+			this.blackPlayerHandler = playerHandler;
+			break;
+		default:
+			throw new IllegalArgumentException("invalid team: " + team);
+		}
+	}
+	
+	/**
+	 * Starts main game flow.
+	 */
+	public void startGame() {
+		// Check if all players are ready.
+		System.out.println( "JavaChess: waiting for players..." );
+		while( this.blackPlayerHandler == null || this.whitePlayerHandler == null ){
+			// Players are still missing.
+			try{ Thread.sleep(1000); }catch( InterruptedException e ){}	
+		}
+		
+		// Set start player.
+		this.activePlayerHandler = this.whitePlayerHandler;
+		
+		// Start game flow.
+		System.out.println( "JavaChess: starting game flow..." );
+		while( ! isGameEndConditionReached() ){
+			this.waitForMove();
+			this.swapActivePlayer();
+		}
+		
+		System.out.println( "ChessGame: game ended." );
+	}
+	
+	private void waitForMove() {
+		Move move = null;
+		// Wait for a valid move.
+		do {
+			move = this.activePlayerHandler.getMove();
+			try{ Thread.sleep(1000); } catch( InterruptedException e ){}	
+		} while( move == null || ! this.moveValidator.isMoveValid(move) );
+		
+		// Execute move.
+		boolean success = this.movePiece( move );
+		
+		if( success ){
+			this.changeGameState();
+			this.activePlayerHandler.moveSuccessfullyExecuted( move );
+		} else {
+			throw new IllegalStateException( "move was valid, but failed to execute" );
+		}
+	}
+	
+	private void swapActivePlayer() {
+		if( this.activePlayerHandler == this.whitePlayerHandler ){
+			this.activePlayerHandler = this.blackPlayerHandler;
+		} else {
+			this.activePlayerHandler = this.whitePlayerHandler;
+		}
 	}
 	
   /** Creates piece instance and add it to the internal list of pieces.
@@ -112,11 +187,9 @@ public class ChessGame {
 		piece.setCol( targetCol );
 		
 		if( isGameEndConditionReached() ){
+			this.lastGameState = this.gameState;
 			this.gameState = GameState.END;
 			System.out.println( piece.getTeam() + " WINS!" );
-		} else {
-			this.changeGameState();
-			this.lastGameState = this.gameState;
 		}
 		
 		return true;
@@ -241,6 +314,11 @@ public class ChessGame {
 		default:
 			throw new IllegalStateException( "Unknown game state: " + this.gameState );
 		}
+	}
+	
+	@Override
+	public void run() {
+		this.startGame();
 	}
 	
 }

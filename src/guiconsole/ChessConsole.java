@@ -1,23 +1,70 @@
 package guiconsole;
 
+import handler.IPlayerHandler;
+
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 
 import logic.ChessGame;
 import logic.Move;
 import logic.Piece;
+import logic.ChessGame.GameState;
 import logic.Piece.Team;
 
-public class ConsoleGui {
+public class ChessConsole implements IPlayerHandler {
 	
 	private ChessGame chessGame;
-	private Move move;
-	private Move lastMove;
 	
-	public ConsoleGui() {
-		// Creates a new chess game.
-		this.chessGame = new ChessGame();
-		this.run();
+	public ChessConsole( ChessGame chessGame ) {
+		// Create a new chess game.
+		this.chessGame = chessGame;
+		
+		this.printCurrentGameState();
+	}
+	
+	@Override
+	public Move getMove() {
+		System.out.println( "your move (format: e2-e3): " );
+		
+		Move move = null;
+		
+		while( move == null ){
+			// Instantiate a new input reader.
+			BufferedReader inputReader = new BufferedReader( new InputStreamReader(System.in) );
+			String input;
+			try {
+				// Read user input.
+				input = inputReader.readLine();
+				
+				// Exit, if user types 'exit'
+				if( input.equalsIgnoreCase( "exit" ) ){
+					System.exit( 0 );
+				} else {
+					move = this.convertStringToMove( input );
+				}
+			} catch( IOException e ){
+				System.out.println( e.getClass() + ": " + e.getMessage() );
+				e.printStackTrace();
+				continue;
+			}
+
+		}
+		
+		return move;
+	}
+	
+	@Override
+	public void moveSuccessfullyExecuted( Move move ){
+		this.printCurrentGameState();
+		
+		if( chessGame.getGameState() == GameState.END ){
+			if( chessGame.getLastGameState() == GameState.WHITE ){
+				System.out.println( "End of game! White won!" );
+			} else if( chessGame.getLastGameState() == GameState.BLACK ){
+				System.out.println( "End of game! Black won!" );
+			}
+		}
 	}
 	
 	/**
@@ -26,7 +73,7 @@ public class ConsoleGui {
 	 * "exit", the application ends. Otherwise the user input is interpreted as
 	 * a move and the application tries to execute that move.
 	 */
-	public void run() {		
+/*	public void run() {		
 		// Prepares for reading input
 		String input = "";
 		BufferedReader inputReader = new BufferedReader( new InputStreamReader(System.in) );
@@ -43,32 +90,36 @@ public class ConsoleGui {
 				if( input.equalsIgnoreCase("exit") ){
 					return;
 				}else{
-					this.handleMove( input );
+					this.convertStringToMove( input );
 				}
 			} catch( Exception e ){
 				System.out.println( e.getClass() + ": " + e.getMessage() );
 			}
 		}
-	}
+	}*/
 	
 	/**
 	 * Moves piece to the specified location.
 	 * @param input A valid move string (e.g. "e7-e5" ).
 	 */
-	private void handleMove( String input ){
+	private Move convertStringToMove( String input ){
+		if( input == null || input.length() != 5 ){
+			return null;
+		}
+		
 		String strSourceCol = input.substring( 0, 1 );
 		String strSourceRow = input.substring( 1, 2 );
 		String strTargetCol = input.substring( 3, 4 );
 		String strTargetRow = input.substring( 4, 5 );
 		
-		this.move = new Move(
-			convertColStrToColInt( strSourceCol ),
+		Move move = new Move(
 			convertRowStrToRowInt( strSourceRow ),
-			convertColStrToColInt( strTargetCol ),
-			convertRowStrToRowInt( strTargetRow )
+			convertColStrToColInt( strSourceCol ),
+			convertRowStrToRowInt( strTargetRow ),
+			convertColStrToColInt( strTargetCol )
 		 );
 		
-		this.chessGame.movePiece( this.move );
+		return move;
 	}
 	
 	/**
@@ -143,18 +194,16 @@ public class ConsoleGui {
 		System.out.println(" +--+--+--+--+--+--+--+--+");
 		System.out.println("  a  b  c  d  e  f  g  h  ");
 		
-		String turnColor = (
-			chessGame.getGameState().toString() == Piece.Team.BLACK.toString()
+		System.out.print("turn: ");
+		System.out.println(
+			chessGame.getGameState().equals( Team.BLACK )
 				? "black" : "white"
 		);
-		System.out.println("turn: " + turnColor);
 	}
 	
 	//
 	//	::: GETTERS & SETTERS :::
 	//
-	
-	
 	
 	/**
 	 * Returns the name of the specified piece. The name is based on color and
@@ -216,7 +265,11 @@ public class ConsoleGui {
 	}
 	
 	public static void main(String[] args) {
-		new ConsoleGui();
+		ChessGame chessGame = new ChessGame();
+		ChessConsole console = new ChessConsole( chessGame );
+		chessGame.setPlayer( Team.WHITE, console );
+		chessGame.setPlayer( Team.BLACK, console );
+		new Thread( chessGame ).start();
 	}
 	
 }
